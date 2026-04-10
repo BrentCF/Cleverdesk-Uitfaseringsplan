@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cleverdesk Uitfaseringsplan — Visscher Traffic</title>
+<!-- Open Graph: nette preview in Slack / Teams / WhatsApp -->
+<meta property="og:title" content="Cleverdesk Uitfaseringsplan — Visscher Traffic × Codeless Factory">
+<meta property="og:description" content="Live planning van de uitfasering van Cleverdesk: onderwerpen, tijdlijn, aandachtspunten en weekplanning.">
+<meta property="og:type" content="website">
+<!-- Favicon -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23ffdd00'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-size='18' font-family='Arial Black' fill='%230f172a'>CF</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -276,6 +282,28 @@ body { font-family: var(--cf-font-body); background: var(--cf-dark); color: var(
 .dp-section-vt { color:#93c5fd; border-left:3px solid #3b82f6; }
 .dp-row-hidden { display:none !important; }
 .dp-milestone { color:var(--cf-yellow); font-weight:600; text-align:center; padding:16px; }
+
+/* Bezoekersmelding */
+.visitor-banner {
+  background: rgba(59,130,246,0.08); border-bottom: 1px solid rgba(59,130,246,0.2);
+  padding: 10px 40px; display: flex; align-items: center; justify-content: center;
+  gap: 10px; font-size: 13px; color: #93c5fd;
+}
+.visitor-banner strong { color: #bfdbfe; }
+
+/* Print */
+@media print {
+  .section-nav, .save-toolbar, .visitor-banner, .add-task-row,
+  .itask-delete, .itask-ap, .itask-mw, .toolbar-btn,
+  .xmodal-bg { display: none !important; }
+  body { background: #fff; color: #000; }
+  .hero { background: #fff; border-bottom: 2px solid #000; padding: 20px; }
+  .hero h1, .hero-label, .hero-meta-value { color: #000; }
+  .hero-meta-label, .hero .subtitle { color: #444; }
+  .topic-card { border: 1px solid #ccc; break-inside: avoid; }
+  .topic-body { display: block !important; }
+  .container { padding: 20px; }
+}
 
 @media (max-width: 768px) {
   .hero { padding: 32px 20px; }
@@ -717,6 +745,11 @@ body { font-family: var(--cf-font-body); background: var(--cf-dark); color: var(
   </div>
 </div>
 
+<!-- ── BEZOEKERSMELDING ── -->
+<div class="visitor-banner">
+  ℹ️ <span><strong>Dit is een live document.</strong> Eventuele wijzigingen die je hier maakt worden alleen lokaal in jouw browser opgeslagen en zijn niet zichtbaar voor anderen.</span>
+</div>
+
 <!-- ── SECTIE-NAVIGATIE ── -->
 <nav class="section-nav" id="section-nav">
   <div class="section-nav-inner">
@@ -823,8 +856,10 @@ body { font-family: var(--cf-font-body); background: var(--cf-dark); color: var(
   <div class="save-toolbar-inner">
     <span class="save-status" id="save-status">Niet opgeslagen</span>
     <span class="export-reminder" id="export-reminder">&#9888; Wijzigingen nog niet geëxporteerd — vergeet de JSON niet te delen</span>
-    <button class="toolbar-btn toolbar-btn-ghost" id="export-btn" onclick="openExportModal()" title="Download als JSON bestand">&#11015; Export JSON</button>
+    <button class="toolbar-btn toolbar-btn-primary" onclick="exportAsHtml()" title="Download HTML met huidige data ingebakken — upload naar GitHub Pages als index.html">&#128196; Export als HTML</button>
+    <button class="toolbar-btn toolbar-btn-ghost" id="export-btn" onclick="openExportModal()" title="Download als JSON bestand (backup)">&#11015; Export JSON</button>
     <button class="toolbar-btn toolbar-btn-ghost" onclick="document.getElementById('json-import-file').click()" title="Laad eerder opgeslagen JSON">&#11014; Import JSON</button>
+    <button class="toolbar-btn toolbar-btn-ghost" onclick="window.print()" title="Pagina afdrukken of opslaan als PDF">&#128438; Afdrukken</button>
     <button class="toolbar-btn toolbar-btn-danger" onclick="resetAll()" title="Alles terugzetten naar standaard">&#8634; Reset</button>
   </div>
 </div>
@@ -838,6 +873,8 @@ const PHASES = [
   { key: 'testen',           label: 'Testen',            icon: '&#9989;',   css: 'phase-testen' },
   { key: 'implementatie',    label: 'Implementatie',     icon: '&#128640;', css: 'phase-implementatie' }
 ];
+
+/* BAKED_STATE = */ let BAKED_STATE = null; /* END_BAKED_STATE */
 
 const TOPICS = [
   {
@@ -1639,6 +1676,29 @@ function doExport() {
   setExportPending(false);
 }
 
+/* ── Export als HTML (data ingebakken) ── */
+function exportAsHtml() {
+  let apState = {};
+  try { apState = JSON.parse(localStorage.getItem('visscher-ap-v1') || '{}'); } catch(e) {}
+  const state = {
+    bakedAt: new Date().toISOString(),
+    topics:  getState(),
+    dp:      dpItems,
+    ap:      apState
+  };
+  const src = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+  const newLine = '/* BAKED_STATE = */ let BAKED_STATE = ' + JSON.stringify(state) + '; /* END_BAKED_STATE */';
+  const baked = src.replace(/\/\* BAKED_STATE = \*\/ let BAKED_STATE = [\s\S]*?\/\* END_BAKED_STATE \*\//, newLine);
+  const d = new Date();
+  const dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  const blob = new Blob([baked], {type: 'text/html; charset=utf-8'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'uitfaseringsplan-' + dateStr + '.html';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(a.href);
+  showSaveStatus('HTML geëxporteerd ✓ — upload naar GitHub Pages als index.html', true);
+}
+
 /* ── Import JSON ── */
 function doImportFile(input) {
   const file = input.files[0];
@@ -1681,10 +1741,12 @@ function importJSON(event) { doImportFile(event.target); }
 
 /* Reset naar defaults */
 function resetAll() {
-  if (!confirm('Weet je zeker dat je alles wilt resetten? Alle wijzigingen gaan verloren.')) return;
+  const input = prompt('Typ RESET om alle wijzigingen te wissen. Dit kan niet ongedaan worden gemaakt.');
+  if (input !== 'RESET') return;
   localStorage.removeItem(STORAGE_KEY);
   localStorage.removeItem(DP_STORAGE);
   localStorage.removeItem('visscher-ap-v1');
+  localStorage.removeItem('visscher-last-import');
   location.reload();
 }
 
@@ -2088,6 +2150,16 @@ function renderDP() {
 
 /* ── DP per-sprint view ── */
 let dpViewMode = 'week'; // 'week' | 'sprint'
+
+// Apply baked state if present (GitHub Pages versie met ingebakken data)
+if (BAKED_STATE) {
+  try {
+    if (BAKED_STATE.topics) localStorage.setItem(STORAGE_KEY, JSON.stringify(BAKED_STATE.topics));
+    if (BAKED_STATE.dp)     localStorage.setItem(DP_STORAGE,  JSON.stringify(BAKED_STATE.dp));
+    if (BAKED_STATE.ap)     localStorage.setItem('visscher-ap-v1', JSON.stringify(BAKED_STATE.ap));
+    if (BAKED_STATE.bakedAt) localStorage.setItem('visscher-last-import', BAKED_STATE.bakedAt);
+  } catch(e) {}
+}
 
 // Load & render detail planning
 dpLoadFromLocal();
