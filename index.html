@@ -537,7 +537,7 @@ body { font-family: var(--cf-font-body); background: var(--cf-dark); color: var(
       </div>
       <div class="hero-meta-item" style="border-left:2px solid rgba(255,221,0,0.3);padding-left:20px;">
         <span class="hero-meta-label">Laatste update</span>
-        <span class="hero-meta-value" style="color:var(--cf-yellow);">10 april 2026 — 14:30</span>
+        <span class="hero-meta-value" style="color:var(--cf-yellow);" id="hero-last-update">—</span>
       </div>
     </div>
   </div>
@@ -1547,6 +1547,19 @@ const _origSetWeek = setWeek;
 setWeek = function(a,b,c) { _origSetWeek(a,b,c); saveToLocal(); };
 
 /* ── Hero: dynamic datum/week/sprint ── */
+function renderLastUpdate() {
+  const el = document.getElementById('hero-last-update');
+  if (!el) return;
+  const ts = localStorage.getItem('visscher-last-import');
+  if (!ts) { el.textContent = 'Nog geen import'; el.style.color = 'var(--cf-muted)'; return; }
+  const d = new Date(ts);
+  const NL_MONTHS = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
+  const date = d.getDate() + ' ' + NL_MONTHS[d.getMonth()] + ' ' + d.getFullYear();
+  const time = String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+  el.textContent = date + ' — ' + time;
+  el.style.color = 'var(--cf-yellow)';
+}
+
 function initHero() {
   const NL_MONTHS = ['januari','februari','maart','april','mei','juni','juli',
                      'augustus','september','oktober','november','december'];
@@ -1651,6 +1664,9 @@ function doImportFile(input) {
       }
       const v = data.version ? ' (v' + data.version + ')' : '';
       showSaveStatus('Planning hersteld uit JSON' + v + ' ✓', true);
+      const importTs = new Date().toISOString();
+      localStorage.setItem('visscher-last-import', importTs);
+      renderLastUpdate();
     } catch(err) {
       showSaveStatus('Fout bij importeren: ' + err.message, false);
     }
@@ -2082,6 +2098,7 @@ const loaded = loadFromLocal();
 renderTopics();
 renderGantt();
 renderApList();
+renderLastUpdate();
 initDpWeekFilter();
 initHero();
 if (loaded) {
